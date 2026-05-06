@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>アラーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      padding: 24px;
+    }
+
+    .clock {
+      font-size: clamp(48px, 12vw, 96px);
+      font-weight: 200;
+      letter-spacing: 0.05em;
+      color: #e0e0ff;
+      text-shadow: 0 0 40px rgba(120, 100, 255, 0.4);
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #8888aa;
+      margin-bottom: 20px;
+    }
+
+    .time-input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    input[type="time"] {
+      flex: 1;
+      background: #0f0f1a;
+      border: 1px solid #3a3a5a;
+      border-radius: 12px;
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 300;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="time"]:focus {
+      border-color: #7864ff;
+    }
+
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 12px 22px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-primary {
+      background: #7864ff;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.85;
+    }
+
+    .btn-danger {
+      background: #ff4466;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      opacity: 0.85;
+    }
+
+    .btn-sm {
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+
+    .alarm-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .alarm-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f0f1a;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 14px 16px;
+      transition: border-color 0.2s;
+    }
+
+    .alarm-item.active {
+      border-color: #7864ff;
+    }
+
+    .alarm-time {
+      font-size: 22px;
+      font-weight: 300;
+      color: #e0e0ff;
+    }
+
+    .alarm-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: #2a2a4a;
+      color: #8888aa;
+    }
+
+    .alarm-badge.on {
+      background: rgba(120, 100, 255, 0.25);
+      color: #a090ff;
+    }
+
+    .alarm-item-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toggle {
+      width: 42px;
+      height: 24px;
+      background: #2a2a4a;
+      border-radius: 12px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      border: none;
+      outline: none;
+    }
+
+    .toggle.on {
+      background: #7864ff;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: left 0.2s;
+    }
+
+    .toggle.on::after {
+      left: 21px;
+    }
+
+    .empty {
+      text-align: center;
+      color: #4a4a6a;
+      font-size: 14px;
+      padding: 20px 0;
+    }
+
+    /* Ringing overlay */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(120, 100, 255, 0.15);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .ring-card {
+      background: #1a1a2e;
+      border: 2px solid #7864ff;
+      border-radius: 24px;
+      padding: 48px 40px;
+      text-align: center;
+      animation: pulse 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { box-shadow: 0 0 20px rgba(120, 100, 255, 0.3); }
+      to   { box-shadow: 0 0 60px rgba(120, 100, 255, 0.7); }
+    }
+
+    .ring-time {
+      font-size: 56px;
+      font-weight: 200;
+      color: #e0e0ff;
+      margin-bottom: 8px;
+    }
+
+    .ring-label {
+      font-size: 14px;
+      color: #8888aa;
+      margin-bottom: 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="clock" id="clock">00:00:00</div>
+
+  <div class="card">
+    <h2>アラームを追加</h2>
+    <div class="time-input-row">
+      <input type="time" id="timeInput" />
+      <button class="btn btn-primary" onclick="addAlarm()">追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>アラーム一覧</h2>
+    <div class="alarm-list" id="alarmList">
+      <div class="empty">アラームがありません</div>
+    </div>
+  </div>
+
+  <!-- Ringing overlay -->
+  <div class="overlay" id="overlay">
+    <div class="ring-card">
+      <div class="ring-time" id="ringTime"></div>
+      <div class="ring-label">アラーム</div>
+      <button class="btn btn-danger" onclick="stopAlarm()">止める</button>
+    </div>
+  </div>
+
+  <script>
+    let alarms = JSON.parse(localStorage.getItem('alarms') || '[]');
+    let ringingId = null;
+    let audioCtx = null;
+    let beepInterval = null;
+
+    function getAudioContext() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function beep() {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.6);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+
+      if (ringingId === null) {
+        const hm = `${h}:${m}`;
+        alarms.forEach(alarm => {
+          if (alarm.enabled && alarm.time === hm && s === '00') {
+            triggerAlarm(alarm);
+          }
+        });
+      }
+    }
+
+    function triggerAlarm(alarm) {
+      ringingId = alarm.id;
+      document.getElementById('ringTime').textContent = alarm.time;
+      document.getElementById('overlay').classList.add('show');
+      beepInterval = setInterval(beep, 1200);
+      beep();
+    }
+
+    function stopAlarm() {
+      clearInterval(beepInterval);
+      document.getElementById('overlay').classList.remove('show');
+      ringingId = null;
+    }
+
+    function addAlarm() {
+      const val = document.getElementById('timeInput').value;
+      if (!val) return;
+      const alarm = { id: Date.now(), time: val, enabled: true };
+      alarms.push(alarm);
+      alarms.sort((a, b) => a.time.localeCompare(b.time));
+      save();
+      render();
+    }
+
+    function toggleAlarm(id) {
+      const alarm = alarms.find(a => a.id === id);
+      if (alarm) alarm.enabled = !alarm.enabled;
+      save();
+      render();
+    }
+
+    function deleteAlarm(id) {
+      alarms = alarms.filter(a => a.id !== id);
+      save();
+      render();
+    }
+
+    function save() {
+      localStorage.setItem('alarms', JSON.stringify(alarms));
+    }
+
+    function render() {
+      const list = document.getElementById('alarmList');
+      if (alarms.length === 0) {
+        list.innerHTML = '<div class="empty">アラームがありません</div>';
+        return;
+      }
+      list.innerHTML = alarms.map(alarm => `
+        <div class="alarm-item ${alarm.enabled ? 'active' : ''}">
+          <div class="alarm-time">${alarm.time}</div>
+          <div class="alarm-item-right">
+            <span class="alarm-badge ${alarm.enabled ? 'on' : ''}">${alarm.enabled ? 'ON' : 'OFF'}</span>
+            <button class="toggle ${alarm.enabled ? 'on' : ''}" onclick="toggleAlarm(${alarm.id})"></button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAlarm(${alarm.id})">削除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+    render();
+  </script>
+</body>
+</html>
